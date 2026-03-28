@@ -1,0 +1,30 @@
+{
+  "name": "polyculy-testapp",
+  "version": "1.0.0",
+  "description": "Comprehensive end-to-end test suite for the Polyculy web application",
+  "scripts": {
+    "test:e2e": "npx playwright test",
+    "test:smoke": "npx playwright test --grep @smoke",
+    "test:core": "npx playwright test --grep @core-regression",
+    "test:readonly": "npx playwright test --grep @read-only-seed",
+    "test:cleanup": "npx playwright test --grep @create-and-clean",
+    "test:auth": "npx playwright test tests/auth/",
+    "test:connections": "npx playwright test tests/connections/",
+    "test:calendar": "npx playwright test tests/calendar/",
+    "test:events": "npx playwright test tests/events/",
+    "test:shared-events": "npx playwright test tests/shared-events/",
+    "test:proposals": "npx playwright test tests/proposals/",
+    "test:notifications": "npx playwright test tests/notifications/",
+    "test:settings": "npx playwright test tests/settings/",
+    "report": "npx playwright show-report reports/html",
+    "setup": "npx playwright install chromium",
+    "lint": "echo 'Add linting configuration as needed'"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.40.0",
+    "dotenv": "^16.3.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

@@ -1,0 +1,20 @@
+{
+    "name":"polyculy",
+    "openBrowser":false,
+    "trayEnable":false,
+    "web":{
+        "HTTP":{
+            "enable":true,
+            "port":5000
+        },
+        "directoryBrowsing":false,
+        "welcomeFiles":"index.cfm"
+    },
+    "app":{
+        "cfengine":"lucee@5"
+    },
+    "port=5000":true,
+    "rewritesEnable=false":true,
+    "name=polyculy":true,
+    "console=false":true
+}

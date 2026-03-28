@@ -1,0 +1,11 @@
+{
+    "name": "polyculy",
+    "version": "1.0.0",
+    "slug": "polyculy",
+    "type": "web",
+    "keywords": ["calendar", "scheduling", "polyamory"],
+    "private": true,
+    "scripts": {
+        "start": "server start"
+    }
+}
