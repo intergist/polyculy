@@ -1,75 +1,98 @@
-component {
+<cfcomponent>
 
-    function authenticate(required string email, required string password) {
-        var passwordHash = hash(arguments.password, "SHA-256");
-        var q = queryExecute(
-            "SELECT user_id, email, display_name, avatar_url, timezone_id, calendar_created
-             FROM polyculy.dbo.users 
-						 WHERE email = :email AND password_hash = :pw AND isNull(is_active,0) = 1",
-            {
-                email: { value: arguments.email, cfsqltype: "cf_sql_varchar" },
-                pw: { value: passwordHash, cfsqltype: "cf_sql_varchar" }
-            }
-        );
-        return q;
-    }
+    <cffunction name="authenticate" access="public" returntype="query" output="false">
+        <cfargument name="email" type="string" required="true">
+        <cfargument name="password" type="string" required="true">
 
-    function getById(required numeric userId) {
-        return queryExecute(
-            "SELECT user_id, email, display_name, avatar_url, timezone_id, calendar_created, is_active, created_at
-             FROM polyculy.dbo.users WHERE user_id = :id",
-            { id: { value: arguments.userId, cfsqltype: "cf_sql_integer" } }
-        );
-    }
+        <cfset local.passwordHash = hash(Arguments.password, "SHA-256")>
+        <cfquery name="qAuth" datasource="#application.datasource#">
+            SELECT user_id, email, display_name, avatar_url, timezone_id, calendar_created
+            FROM polyculy.dbo.users
+            WHERE email = <cfqueryparam value="#Arguments.email#" cfsqltype="cf_sql_varchar">
+              AND password_hash = <cfqueryparam value="#local.passwordHash#" cfsqltype="cf_sql_varchar">
+              AND isNull(is_active,0) = 1
+        </cfquery>
 
-    function getByEmail(required string email) {
-        return queryExecute(
-            "SELECT user_id, email, display_name, avatar_url, timezone_id, calendar_created
-             FROM polyculy.dbo.users WHERE email = :email",
-            { email: { value: arguments.email, cfsqltype: "cf_sql_varchar" } }
-        );
-    }
+        <cfreturn qAuth>
+    </cffunction>
 
-    function create(required string email, required string password, required string displayName) {
-        var passwordHash = hash(arguments.password, "SHA-256");
-        queryExecute(
-            "INSERT INTO polyculy.dbo.users (email, password_hash, display_name) VALUES (:email, :pw, :name)",
-            {
-                email: { value: arguments.email, cfsqltype: "cf_sql_varchar" },
-                pw: { value: passwordHash, cfsqltype: "cf_sql_varchar" },
-                name: { value: arguments.displayName, cfsqltype: "cf_sql_varchar" }
-            },
-            { result: "qResult" }
-        );
-        return listFirst(qResult.generatedKey);
-    }
+    <cffunction name="getById" access="public" returntype="query" output="false">
+        <cfargument name="userId" type="numeric" required="true">
 
-    function updateTimezone(required numeric userId, required string timezoneId) {
-        queryExecute(
-            "UPDATE polyculy.dbo.users SET timezone_id = :tz, updated_at = CURRENT_TIMESTAMP WHERE user_id = :id",
-            {
-                id: { value: arguments.userId, cfsqltype: "cf_sql_integer" },
-                tz: { value: arguments.timezoneId, cfsqltype: "cf_sql_varchar" }
-            }
-        );
-    }
+        <cfquery name="qUser" datasource="#application.datasource#">
+            SELECT user_id, email, display_name, avatar_url, timezone_id, calendar_created, is_active, created_at
+            FROM polyculy.dbo.users
+            WHERE user_id = <cfqueryparam value="#VAL(Arguments.userId)#" cfsqltype="cf_sql_integer">
+        </cfquery>
 
-    function setCalendarCreated(required numeric userId) {
-        queryExecute(
-            "UPDATE polyculy.dbo.users SET calendar_created = TRUE, updated_at = CURRENT_TIMESTAMP WHERE user_id = :id",
-            { id: { value: arguments.userId, cfsqltype: "cf_sql_integer" } }
-        );
-    }
+        <cfreturn qUser>
+    </cffunction>
 
-    function updateProfile(required numeric userId, required string displayName, string avatarUrl = "") {
-        queryExecute(
-            "UPDATE polyculy.dbo.users SET display_name = :name, avatar_url = :avatar, updated_at = CURRENT_TIMESTAMP WHERE user_id = :id",
-            {
-                id: { value: arguments.userId, cfsqltype: "cf_sql_integer" },
-                name: { value: arguments.displayName, cfsqltype: "cf_sql_varchar" },
-                avatar: { value: arguments.avatarUrl, cfsqltype: "cf_sql_varchar", null: !len(arguments.avatarUrl) }
-            }
-        );
-    }
+    <cffunction name="getByEmail" access="public" returntype="query" output="false">
+        <cfargument name="email" type="string" required="true">
 
-}
+        <cfquery name="qUserByEmail" datasource="#application.datasource#">
+            SELECT user_id, email, display_name, avatar_url, timezone_id, calendar_created
+            FROM polyculy.dbo.users
+            WHERE email = <cfqueryparam value="#Arguments.email#" cfsqltype="cf_sql_varchar">
+        </cfquery>
+
+        <cfreturn qUserByEmail>
+    </cffunction>
+
+    <cffunction name="create" access="public" returntype="any" output="false">
+        <cfargument name="email" type="string" required="true">
+        <cfargument name="password" type="string" required="true">
+        <cfargument name="displayName" type="string" required="true">
+
+        <cfset local.passwordHash = hash(Arguments.password, "SHA-256")>
+        <cfquery name="qResult" datasource="#application.datasource#" result="qResult">
+            INSERT INTO polyculy.dbo.users (email, password_hash, display_name)
+            VALUES (
+                <cfqueryparam value="#Arguments.email#" cfsqltype="cf_sql_varchar">,
+                <cfqueryparam value="#local.passwordHash#" cfsqltype="cf_sql_varchar">,
+                <cfqueryparam value="#Arguments.displayName#" cfsqltype="cf_sql_varchar">
+            )
+        </cfquery>
+
+        <cfreturn listFirst(qResult.generatedKey)>
+    </cffunction>
+
+    <cffunction name="updateTimezone" access="public" returntype="void" output="false">
+        <cfargument name="userId" type="numeric" required="true">
+        <cfargument name="timezoneId" type="string" required="true">
+
+        <cfquery datasource="#application.datasource#">
+            UPDATE polyculy.dbo.users
+            SET timezone_id = <cfqueryparam value="#Arguments.timezoneId#" cfsqltype="cf_sql_varchar">,
+                updated_at = getdate()
+            WHERE user_id = <cfqueryparam value="#VAL(Arguments.userId)#" cfsqltype="cf_sql_integer">
+        </cfquery>
+    </cffunction>
+
+    <cffunction name="setCalendarCreated" access="public" returntype="void" output="false">
+        <cfargument name="userId" type="numeric" required="true">
+
+        <cfquery datasource="#application.datasource#">
+            UPDATE polyculy.dbo.users
+            SET calendar_created = TRUE,
+                updated_at = getdate()
+            WHERE user_id = <cfqueryparam value="#VAL(Arguments.userId)#" cfsqltype="cf_sql_integer">
+        </cfquery>
+    </cffunction>
+
+    <cffunction name="updateProfile" access="public" returntype="void" output="false">
+        <cfargument name="userId" type="numeric" required="true">
+        <cfargument name="displayName" type="string" required="true">
+        <cfargument name="avatarUrl" type="string" required="false" default="">
+
+        <cfquery datasource="#application.datasource#">
+            UPDATE polyculy.dbo.users
+            SET display_name = <cfqueryparam value="#Arguments.displayName#" cfsqltype="cf_sql_varchar">,
+                avatar_url = <cfqueryparam value="#Arguments.avatarUrl#" cfsqltype="cf_sql_varchar" null="#NOT len(Arguments.avatarUrl)#">,
+                updated_at = getdate()
+            WHERE user_id = <cfqueryparam value="#Arguments.userId#" cfsqltype="cf_sql_integer">
+        </cfquery>
+    </cffunction>
+
+</cfcomponent>

@@ -1,11 +1,4 @@
 <cf_main pageTitle="Login" showNav="false">
-<cfquery name="q1" datasource="polyculyTest">
-select * from polyculy.dbo.users
-</cfquery>
-<cfdump var="#q1#" expand="no"/>
-<cfdump var="#application#" expand="no"/>
- <!--- --->
-<!--- <cfdump var="#cgi#"/> --->
 <cfoutput>
 <div class="row justify-content-center">
 	<div class="col-md-5">
@@ -78,6 +71,7 @@ select * from polyculy.dbo.users
 	</div>
 	</div>
 </div>
+
 
 
 <script>

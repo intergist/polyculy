@@ -1,74 +1,85 @@
-component {
+<cfcomponent>
 
-    this.name = "Polyculy";
-    this.applicationTimeout = createTimeSpan(1, 0, 0, 0);
-    this.sessionManagement = true;
-    this.sessionTimeout = createTimeSpan(0, 2, 0, 0);
-		
-		this.datasource="polyculy";
-		application.datasource="polyculy";
+    <cfset this.name = "Polyculy">
+    <cfset this.applicationTimeout = createTimeSpan(1, 0, 0, 0)>
+    <cfset this.sessionManagement = true>
+    <cfset this.sessionTimeout = createTimeSpan(0, 2, 0, 0)>
+    <cfset this.datasource = "polyculy">
 
-    // Mappings
-    this.mappings["/components"] = getDirectoryFromPath(getCurrentTemplatePath()) & "components";
-    this.mappings["/model"]      = getDirectoryFromPath(getCurrentTemplatePath()) & "model";
-    this.mappings["/api"]        = getDirectoryFromPath(getCurrentTemplatePath()) & "api";
+    <!--- Mappings --->
+    <cfset this.mappings["/components"] = getDirectoryFromPath(getCurrentTemplatePath()) & "components">
+    <cfset this.mappings["/model"]      = getDirectoryFromPath(getCurrentTemplatePath()) & "model">
+    <cfset this.mappings["/api"]        = getDirectoryFromPath(getCurrentTemplatePath()) & "api">
 
-    // Custom tag paths for layout
-    this.customTagPaths = getDirectoryFromPath(getCurrentTemplatePath()) & "views/layouts";
+    <!--- Custom tag paths for layout --->
+    <cfset this.customTagPaths = getDirectoryFromPath(getCurrentTemplatePath()) & "views/layouts">
 
-    function onApplicationStart() {
-        var dbInit = new components.DatabaseInit();
-        dbInit.initialize();
-        return true;
-    }
+    <cffunction name="onApplicationStart" returntype="boolean" output="false">
+			<cfset application.datasource = "polyculy">
+			<cfset var dbInit = createObject("component", "components.DatabaseInit")>
+			<cfset dbInit.initialize()>
+			<cfreturn true>
+    </cffunction>
 
-    function onSessionStart() {
-        session.isLoggedIn = false;
-        session.userId = 0;
-        session.userEmail = "";
-        session.displayName = "";
-        session.csrfToken = hash(createUUID() & now(), "SHA-256");
-    }
+    <cffunction name="onSessionStart" output="false">
+        <cfset session.isLoggedIn = false>
+        <cfset session.userId = 0>
+        <cfset session.userEmail = "">
+        <cfset session.displayName = "">
+        <cfset session.csrfToken = hash(createUUID() & now(), "SHA-256")>
+    </cffunction>
 
-    function onRequestStart(targetPage) {
-        // Allow reinit via URL param
-        if (structKeyExists(url, "reinit")) {
-            onApplicationStart();
-        }
+    <cffunction name="onRequestStart" returntype="boolean" output="false">
+        <cfargument name="targetPage" type="string" required="true">
 
-        // Determine if this is a public page (no auth required)
-        var publicPages = ["/index.cfm", "/views/auth/login.cfm", "/views/auth/signup.cfm", "/views/auth/recovery.cfm"];
-        var publicAPIs = ["/api/auth.cfm", "/api/reset-seed.cfm"];
-        var requestedPage = arguments.targetPage;
 
-        var isPublic = false;
-        for (var pg in publicPages) {
-            if (requestedPage contains pg) { isPublic = true; break; }
-        }
-        for (var pg in publicAPIs) {
-            if (requestedPage contains pg) { isPublic = true; break; }
-        }
 
-        // Redirect to login if not authenticated and not on public page
-        if (!isPublic && (!structKeyExists(session, "isLoggedIn") || !session.isLoggedIn)) {
-            location(url="/index.cfm", addtoken=false);
-            return false;
-        }
+        <!--- Allow reinit via URL param --->
+        <cfif structKeyExists(url, "reinit")>
+            <cfset onApplicationStart()>
+        </cfif>
 
-        return true;
-    }
+        <!--- Determine if this is a public page (no auth required) --->
+        <cfset var publicPages = ["/index.cfm", "/views/auth/login.cfm", "/views/auth/signup.cfm", "/views/auth/recovery.cfm"]>
+        <cfset var publicAPIs = ["/api/auth.cfm", "/api/reset-seed.cfm"]>
+        <cfset var requestedPage = arguments.targetPage>
+        <cfset var isPublic = false>
 
-    function onError(exception, eventName) {
-        if (structKeyExists(url, "format") && url.format == "json") {
-            cfheader(name="Content-Type", value="application/json");
-            writeOutput(serializeJSON({ "success": false, "message": exception.message & " " & exception.Detail }));
-        } else {
-            include "/views/auth/login.cfm";
-        }
-    }
-		
-	/*						writeDump(var = application, label = "appl");
-							writeDump(var = this, label = "this");
-							*/
+        <cfloop array="#publicPages#" index="pg">
+            <cfif requestedPage contains pg>
+                <cfset isPublic = true>
+                <cfbreak>
+            </cfif>
+        </cfloop>
 
-}
+        <cfloop array="#publicAPIs#" index="pg">
+            <cfif requestedPage contains pg>
+                <cfset isPublic = true>
+                <cfbreak>
+            </cfif>
+        </cfloop>
+
+        <!--- Redirect to login if not authenticated and not on public page --->
+        <cfif NOT isPublic AND (NOT structKeyExists(session, "isLoggedIn") OR NOT session.isLoggedIn)>
+            <cflocation url="/index.cfm" addtoken="false">
+            <cfreturn false>
+        </cfif>
+
+        <cfreturn true>
+    </cffunction>
+
+    <!---
+    <cffunction name="onError" output="false">
+        <cfargument name="exception" required="true">
+        <cfargument name="eventName" required="true">
+
+        <cfif structKeyExists(url, "format") AND url.format EQ "json">
+            <cfheader name="Content-Type" value="application/json">
+            <cfoutput>#serializeJSON({ "success": false, "message": exception.message & " " & exception.Detail })#</cfoutput>
+        <cfelse>
+            <cfinclude template="/views/auth/login.cfm">
+        </cfif>
+    </cffunction>
+    --->
+
+</cfcomponent>
