@@ -46,7 +46,7 @@
         <cfargument name="displayName" type="string" required="true">
 
         <cfset local.passwordHash = hash(Arguments.password, "SHA-256")>
-        <cfquery name="qResult" datasource="#application.datasource#" result="qResult">
+        <cfquery datasource="#application.datasource#" result="insUser">
             INSERT INTO polyculy.dbo.users (email, password_hash, display_name)
             VALUES (
                 <cfqueryparam value="#Arguments.email#" cfsqltype="cf_sql_varchar">,
@@ -55,7 +55,7 @@
             )
         </cfquery>
 
-        <cfreturn listFirst(qResult.generatedKey)>
+        <cfreturn listFirst(insUser.generatedKey)>
     </cffunction>
 
     <cffunction name="updateTimezone" access="public" returntype="void" output="false">
@@ -75,8 +75,8 @@
 
         <cfquery datasource="#application.datasource#">
             UPDATE polyculy.dbo.users
-            SET calendar_created = TRUE,
-                updated_at = getdate()
+            SET 	calendar_created = 1,
+                	updated_at = getdate()
             WHERE user_id = <cfqueryparam value="#VAL(Arguments.userId)#" cfsqltype="cf_sql_integer">
         </cfquery>
     </cffunction>

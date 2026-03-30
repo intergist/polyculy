@@ -1,51 +1,75 @@
-<cfscript>
-    setting showDebugOutput=false;
-    cfheader(name="Content-Type", value="application/json");
+<cfsetting showDebugOutput="false">
+<cfheader name="Content-Type" value="application/json">
 
-    licSvc = new model.LicenceService();
-    auditSvc = new model.AuditService();
-    notifSvc = new model.NotificationService();
+<cfset licSvc = createObject("component", "model.LicenceService")>
+<cfset auditSvc = createObject("component", "model.AuditService")>
+<cfset notifSvc = createObject("component", "model.NotificationService")>
 
-    action = url.action ?: "list";
-    response = { "success": true };
+<cfset action = structKeyExists(url, "action") AND len(url.action) ? url.action : "list">
+<cfset response = { "success" = true }>
 
-    try {
-        switch (action) {
-            case "list":
-                q = licSvc.getByUser(session.userId);
-                data = [];
-                for (row in q) { arrayAppend(data, row); }
-                response["data"] = data;
-                break;
+<cftry>
+	<cfswitch expression="#action#">
+		<cfcase value="list">
+			<cfset q = licSvc.getByUser(session.userId)>
+			<cfset data = []>
+			<cfloop query="q">
+				<cfset arrayAppend(data, q[currentRow])>
+			</cfloop>
+			<cfset response["data"] = data>
+		</cfcase>
 
-            case "validate":
-                q = licSvc.validate(url.code ?: form.code ?: "");
-                response["data"] = { valid: q.recordCount > 0 };
-                if (q.recordCount) {
-                    response["data"]["licence_type"] = q.licence_type;
-                }
-                break;
+		<cfcase value="validate">
+			<cfset rawCode = "">
+			<cfif structKeyExists(url, "code") AND len(url.code)>
+				<cfset rawCode = url.code>
+			<cfelseif structKeyExists(form, "code") AND len(form.code)>
+				<cfset rawCode = form.code>
+			</cfif>
+			<cfset q = licSvc.validate(rawCode)>
+			<cfset response["data"] = { "valid" = q.recordCount GT 0 }>
+			<cfif q.recordCount>
+				<cfset response["data"]["licence_type"] = q.licence_type>
+			</cfif>
+		</cfcase>
 
-            case "gift":
-                licSvc.giftLicence(session.userId, form.to_email, form.licence_code);
-                auditSvc.log(session.userId, "licence_gift", "licence", 0, "Gifted license #form.licence_code# to #form.to_email#");
-                notifSvc.create(session.userId, "licence_gifted", "License Gifted", "You gifted a license to #form.to_email#.", "licence", 0);
-                response["message"] = "License gifted successfully";
-                break;
+		<cfcase value="gift">
+			<cfset licSvc.giftLicence(session.userId, form.to_email, form.licence_code)>
+			<cfset auditSvc.log(
+				session.userId,
+				"licence_gift",
+				"licence",
+				0,
+				"Gifted license #form.licence_code# to #form.to_email#"
+			)>
+			<cfset notifSvc.create(
+				session.userId,
+				"licence_gifted",
+				"License Gifted",
+				"You gifted a license to #form.to_email#.",
+				"licence",
+				0
+			)>
+			<cfset response["message"] = "License gifted successfully">
+		</cfcase>
 
-            case "available":
-                q = licSvc.getAvailableForUser(session.userId);
-                data = [];
-                for (row in q) { arrayAppend(data, row); }
-                response["data"] = data;
-                break;
+		<cfcase value="available">
+			<cfset q = licSvc.getAvailableForUser(session.userId)>
+			<cfset data = []>
+			<cfloop query="q">
+				<cfset arrayAppend(data, q[currentRow])>
+			</cfloop>
+			<cfset response["data"] = data>
+		</cfcase>
 
-            default:
-                response = { "success": false, "message": "Unknown action" };
-        }
-    } catch (any e) {
-        response = { "success": false, "message": e.message };
-    }
+		<cfdefaultcase>
+			<cfset response = { "success" = false, "message" = "Unknown action" }>
+		</cfdefaultcase>
+	</cfswitch>
 
-    writeOutput(serializeJSON(response));
-</cfscript>
+	<cfcatch type="any">
+		<cfset response = { "success" = false, "message" = cfcatch.message }>
+	</cfcatch>
+</cftry>
+
+<cfoutput>#serializeJSON(response)#</cfoutput>

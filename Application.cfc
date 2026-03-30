@@ -38,7 +38,7 @@
 		</cfif>
 
 		<!--- Determine if this is a public page (no auth required) --->
-		<cfset local.publicPages = ["/index.cfm", "test.cfm", "/views/auth/login.cfm", "/views/auth/signup.cfm", "/views/auth/recovery.cfm"]>
+		<cfset local.publicPages = ["/index.cfm", "/views/auth/login.cfm",  "/views/auth/signup.cfm", "/views/auth/recovery.cfm", "test.cfm"]>
 		<cfset local.publicAPIs = ["/api/auth.cfm", "/api/reset-seed.cfm"]>
 		<cfset local.requestedPage = arguments.targetPage>
 		<cfset local.isPublic = false>
@@ -67,7 +67,7 @@
 	</cffunction>
 	
 
-	<cffunction name="onError" output="false">
+<!--- 	<cffunction name="onError" output="false">
 		<cfargument name="exception" required="true">
 		<cfargument name="eventName" required="true">
 	
@@ -77,7 +77,7 @@
 		<cfelse>
 			<cfinclude template="/views/auth/login.cfm">
 		</cfif>
-	</cffunction>
-	<!---	--->
+	</cffunction> --->
+
 
 </cfcomponent>

@@ -1,75 +1,92 @@
-<cfscript>
-    setting showDebugOutput=false;
-    cfheader(name="Content-Type", value="application/json");
+<cfsetting showDebugOutput="false">
+<cfheader name="Content-Type" value="application/json">
 
-    propSvc = new model.ProposalService();
-    auditSvc = new model.AuditService();
-    notifSvc = new model.NotificationService();
-    sharedSvc = new model.SharedEventService();
+<cfset propSvc = createObject("component", "model.ProposalService")>
+<cfset auditSvc = createObject("component", "model.AuditService")>
+<cfset notifSvc = createObject("component", "model.NotificationService")>
+<cfset sharedSvc = createObject("component", "model.SharedEventService")>
 
-    action = url.action ?: "list";
-    response = { "success": true };
+<cfset action = structKeyExists(url, "action") AND len(url.action) ? url.action : "list">
+<cfset response = { "success" = true }>
 
-    try {
-        switch (action) {
-            case "listForEvent":
-                q = propSvc.getAllByEvent(url.event_id);
-                data = [];
-                for (row in q) { arrayAppend(data, row); }
-                response["data"] = data;
-                break;
+<cftry>
+	<cfswitch expression="#action#">
+		<cfcase value="listForEvent">
+			<cfset q = propSvc.getAllByEvent(url.event_id)>
+			<cfset data = []>
+			<cfloop query="q">
+				<cfset arrayAppend(data, q[currentRow])>
+			</cfloop>
+			<cfset response["data"] = data>
+		</cfcase>
 
-            case "activeForEvent":
-                q = propSvc.getActiveByEvent(url.event_id);
-                data = [];
-                for (row in q) { arrayAppend(data, row); }
-                response["data"] = data;
-                break;
+		<cfcase value="activeForEvent">
+			<cfset q = propSvc.getActiveByEvent(url.event_id)>
+			<cfset data = []>
+			<cfloop query="q">
+				<cfset arrayAppend(data, q[currentRow])>
+			</cfloop>
+			<cfset response["data"] = data>
+		</cfcase>
 
-            case "create":
-                propSvc.create(
-                    form.event_id,
-                    session.userId,
-                    form.proposed_start,
-                    form.proposed_end,
-                    form.message ?: ""
-                );
+		<cfcase value="create">
+			<cfset propSvc.create(
+				form.event_id,
+				session.userId,
+				form.proposed_start,
+				form.proposed_end,
+				structKeyExists(form, "message") ? form.message : ""
+			)>
 
-                // Notify organizer
-                evt = sharedSvc.getById(form.event_id);
-                if (evt.organizer_user_id != session.userId) {
-                    notifSvc.create(evt.organizer_user_id, "proposal_received", "New Time Proposal", "#session.displayName# proposed a new time for ""#evt.title#"".", "shared_event", form.event_id);
-                }
+			<cfset evt = sharedSvc.getById(form.event_id)>
+			<cfif evt.organizer_user_id NEQ session.userId>
+				<cfset notifSvc.create(
+					evt.organizer_user_id,
+					"proposal_received",
+					"New Time Proposal",
+					"#session.displayName# proposed a new time for ""#evt.title#"".",
+					"shared_event",
+					form.event_id
+				)>
+			</cfif>
 
-                auditSvc.log("proposal_create", "shared_event", form.event_id, "Proposed new time", session.userId);
-                response["message"] = "Proposal submitted";
-                break;
+			<cfset auditSvc.log(
+				"proposal_create",
+				"shared_event",
+				form.event_id,
+				"Proposed new time",
+				session.userId
+			)>
+			<cfset response["message"] = "Proposal submitted">
+		</cfcase>
 
-            case "accept":
-                result = propSvc.acceptProposal(form.proposal_id);
-                if (structKeyExists(result, "success") && !result.success) {
-                    response = result;
-                } else {
-                    response["message"] = "Proposal accepted — event time updated, acceptances reset";
-                }
-                break;
+		<cfcase value="accept">
+			<cfset result = propSvc.acceptProposal(form.proposal_id)>
+			<cfif structKeyExists(result, "success") AND NOT result.success>
+				<cfset response = result>
+			<cfelse>
+				<cfset response["message"] = "Proposal accepted — event time updated, acceptances reset">
+			</cfif>
+		</cfcase>
 
-            case "reject":
-                propSvc.rejectProposal(form.proposal_id);
-                response["message"] = "Proposal rejected";
-                break;
+		<cfcase value="reject">
+			<cfset propSvc.rejectProposal(form.proposal_id)>
+			<cfset response["message"] = "Proposal rejected">
+		</cfcase>
 
-            case "withdraw":
-                propSvc.rejectProposal(form.proposal_id);
-                response["message"] = "Proposal withdrawn";
-                break;
+		<cfcase value="withdraw">
+			<cfset propSvc.rejectProposal(form.proposal_id)>
+			<cfset response["message"] = "Proposal withdrawn">
+		</cfcase>
 
-            default:
-                response = { "success": false, "message": "Unknown action" };
-        }
-    } catch (any e) {
-        response = { "success": false, "message": e.message };
-    }
+		<cfdefaultcase>
+			<cfset response = { "success" = false, "message" = "Unknown action" }>
+		</cfdefaultcase>
+	</cfswitch>
 
-    writeOutput(serializeJSON(response));
-</cfscript>
+	<cfcatch type="any">
+		<cfset response = { "success" = false, "message" = cfcatch.message }>
+	</cfcatch>
+</cftry>
+
+<cfoutput>#serializeJSON(response)#</cfoutput>

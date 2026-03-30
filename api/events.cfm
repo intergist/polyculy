@@ -1,133 +1,211 @@
-<cfscript>
-    setting showDebugOutput=false;
-    cfheader(name="Content-Type", value="application/json");
+<cfsetting showDebugOutput="false">
+<cfheader name="Content-Type" value="application/json">
 
-    eventSvc = new model.EventService();
-    auditSvc = new model.AuditService();
+<cfset eventSvc = createObject("component", "model.EventService")>
+<cfset auditSvc = createObject("component", "model.AuditService")>
 
-    action = url.action ?: "list";
-    response = { "success": true };
+<cfset action   = structKeyExists(url, "action") AND len(url.action) ? url.action : "list">
+<cfset response = { "success" = true }>
 
-    try {
-        switch (action) {
-            case "list":
-                q = eventSvc.getPersonalEventsForUser(session.userId, url.startDate ?: "", url.endDate ?: "");
-                events = [];
-                for (row in q) { arrayAppend(events, row); }
-                response["data"] = events;
-                break;
+<cftry>
 
-            case "get":
-                if (!structKeyExists(url, "id")) {
-                    response = { "success": false, "message": "Event ID required." };
-                    break;
-                }
-                q = eventSvc.getPersonalEvent(url.id);
-                if (q.recordCount) {
-                    row = {};
-                    for (col in listToArray(q.columnList)) { row[lCase(col)] = q[col][1]; }
-                    // Get visibility records
-                    vis = eventSvc.getVisibilityRecords(url.id);
-                    visData = [];
-                    for (v in vis) { arrayAppend(visData, v); }
-                    row["visibility"] = visData;
-                    response["data"] = row;
-                } else {
-                    response = { "success": false, "message": "Event not found." };
-                }
-                break;
+    <cfswitch expression="#action#">
 
-            case "create":
-                startTimeStr = form.startDate & " " & form.startHour & ":" & form.startMinute & " " & form.startAmPm;
-                endTimeStr = form.endDate ?: form.startDate;
-                endTimeStr = endTimeStr & " " & (form.endHour ?: form.startHour) & ":" & (form.endMinute ?: form.startMinute) & " " & (form.endAmPm ?: form.startAmPm);
+        <cfcase value="list">
+            <cfset startDate = structKeyExists(url, "startDate") ? url.startDate : "">
+            <cfset endDate   = structKeyExists(url, "endDate")   ? url.endDate   : "">
 
-                eventData = {
-                    userId: session.userId,
-                    title: form.title,
-                    startTime: parseDateTime(startTimeStr),
-                    endTime: parseDateTime(endTimeStr),
-                    allDay: structKeyExists(form, "allDay"),
-                    timezoneId: session.timezoneId ?: "America/New_York",
-                    eventDetails: form.eventDetails ?: "",
-                    address: form.address ?: "",
-                    reminderMinutes: form.reminderMinutes ?: "",
-                    visibilityTier: form.visibilityTier ?: "invisible"
-                };
+            <cfset q = eventSvc.getPersonalEventsForUser(session.userId, startDate, endDate)>
+            <cfset events = []>
 
-                newId = eventSvc.createPersonalEvent(eventData);
+            <cfloop query="q">
+                <!--- push each row as a struct --->
+                <cfset rowStruct = {}>
+                <cfloop list="#q.columnList#" index="colName">
+                    <cfset rowStruct[lCase(colName)] = q[colName][q.currentRow]>
+                </cfloop>
+                <cfset arrayAppend(events, rowStruct)>
+            </cfloop>
 
-                // Handle visibility settings
-                fullDetailUsers = [];
-                busyBlockUsers = [];
-                if (structKeyExists(form, "fullDetailUsers") && len(form.fullDetailUsers)) {
-                    fullDetailUsers = listToArray(form.fullDetailUsers);
-                }
-                if (structKeyExists(form, "busyBlockUsers") && len(form.busyBlockUsers)) {
-                    busyBlockUsers = listToArray(form.busyBlockUsers);
-                }
-                eventSvc.setVisibility(newId, eventData.visibilityTier, fullDetailUsers, busyBlockUsers);
+            <cfset response["data"] = events>
+        </cfcase>
 
-                auditSvc.log("event_created", "personal_event", newId,
-                    "Created personal event: #form.title#", session.userId);
-                response["message"] = "Event created.";
-                response["id"] = newId;
-                break;
+        <cfcase value="get">
+            <cfif NOT structKeyExists(url, "id")>
+                <cfset response = { "success" = false, "message" = "Event ID required." }>
+            <cfelse>
+                <cfset q = eventSvc.getPersonalEvent(url.id)>
 
-            case "update":
-                if (!structKeyExists(form, "eventId")) {
-                    response = { "success": false, "message": "Event ID required." };
-                    break;
-                }
-                startTimeStr = form.startDate & " " & form.startHour & ":" & form.startMinute & " " & form.startAmPm;
-                endTimeStr = (form.endDate ?: form.startDate) & " " & (form.endHour ?: form.startHour) & ":" & (form.endMinute ?: form.startMinute) & " " & (form.endAmPm ?: form.startAmPm);
+                <cfif q.recordCount>
+                    <cfset row = {}>
 
-                eventData = {
-                    userId: session.userId,
-                    title: form.title,
-                    startTime: parseDateTime(startTimeStr),
-                    endTime: parseDateTime(endTimeStr),
-                    allDay: structKeyExists(form, "allDay"),
-                    eventDetails: form.eventDetails ?: "",
-                    address: form.address ?: "",
-                    reminderMinutes: form.reminderMinutes ?: "",
-                    visibilityTier: form.visibilityTier ?: "invisible"
-                };
-                eventSvc.updatePersonalEvent(form.eventId, eventData);
+                    <cfloop list="#q.columnList#" index="colName">
+                        <cfset row[lCase(colName)] = q[colName][1]>
+                    </cfloop>
 
-                // Update visibility
-                fullDetailUsers = [];
-                busyBlockUsers = [];
-                if (structKeyExists(form, "fullDetailUsers") && len(form.fullDetailUsers)) {
-                    fullDetailUsers = listToArray(form.fullDetailUsers);
-                }
-                if (structKeyExists(form, "busyBlockUsers") && len(form.busyBlockUsers)) {
-                    busyBlockUsers = listToArray(form.busyBlockUsers);
-                }
-                eventSvc.setVisibility(form.eventId, eventData.visibilityTier, fullDetailUsers, busyBlockUsers);
+                    <cfset vis    = eventSvc.getVisibilityRecords(url.id)>
+                    <cfset visData = []>
 
-                auditSvc.log("event_updated", "personal_event", form.eventId,
-                    "Updated personal event: #form.title#", session.userId);
-                response["message"] = "Event updated.";
-                break;
+                    <cfloop query="vis">
+                        <cfset visRow = {}>
+                        <cfloop list="#vis.columnList#" index="colName2">
+                            <cfset visRow[lCase(colName2)] = vis[colName2][vis.currentRow]>
+                        </cfloop>
+                        <cfset arrayAppend(visData, visRow)>
+                    </cfloop>
 
-            case "delete":
-                if (!structKeyExists(form, "eventId")) {
-                    response = { "success": false, "message": "Event ID required." };
-                    break;
-                }
-                eventSvc.deletePersonalEvent(form.eventId, session.userId);
-                auditSvc.log("event_deleted", "personal_event", form.eventId,
-                    "Deleted personal event", session.userId);
-                response["message"] = "Event deleted.";
-                break;
+                    <cfset row["visibility"] = visData>
+                    <cfset response["data"]  = row>
+                <cfelse>
+                    <cfset response = { "success" = false, "message" = "Event not found." }>
+                </cfif>
+            </cfif>
+        </cfcase>
 
-            default:
-                response = { "success": false, "message": "Unknown action: #action#" };
-        }
-    } catch (any e) {
-        response = { "success": false, "message": e.message };
-    }
+        <cfcase value="create">
+            <cfset startTimeStr = form.startDate & " " & form.startHour & ":" & form.startMinute & " " & form.startAmPm>
 
-    writeOutput(serializeJSON(response));
-</cfscript>
+            <cfset endDateVal = structKeyExists(form, "endDate") AND len(form.endDate) ? form.endDate : form.startDate>
+            <cfset endHourVal = structKeyExists(form, "endHour") AND len(form.endHour) ? form.endHour : form.startHour>
+            <cfset endMinVal  = structKeyExists(form, "endMinute") AND len(form.endMinute) ? form.endMinute : form.startMinute>
+            <cfset endAmPmVal = structKeyExists(form, "endAmPm") AND len(form.endAmPm) ? form.endAmPm : form.startAmPm>
+
+            <cfset endTimeStr = endDateVal & " " & endHourVal & ":" & endMinVal & " " & endAmPmVal>
+
+            <cfset tzVal = (structKeyExists(session, "timezoneId") AND len(session.timezoneId)) ? session.timezoneId : "America/New_York">
+
+            <cfset eventData = {
+                userId          = session.userId,
+                title           = form.title,
+                startTime       = parseDateTime(startTimeStr),
+                endTime         = parseDateTime(endTimeStr),
+                allDay          = structKeyExists(form, "allDay"),
+                timezoneId      = tzVal,
+                eventDetails    = structKeyExists(form, "eventDetails")    ? form.eventDetails    : "",
+                address         = structKeyExists(form, "address")         ? form.address         : "",
+                reminderMinutes = structKeyExists(form, "reminderMinutes") ? form.reminderMinutes : "",
+                visibilityTier  = structKeyExists(form, "visibilityTier")  ? form.visibilityTier  : "invisible"
+            }>
+
+            <cfset newId = eventSvc.createPersonalEvent(eventData)>
+
+            <!--- Visibility settings --->
+            <cfset fullDetailUsers = []>
+            <cfset busyBlockUsers  = []>
+
+            <cfif structKeyExists(form, "fullDetailUsers") AND len(form.fullDetailUsers)>
+                <cfset fullDetailUsers = listToArray(form.fullDetailUsers)>
+            </cfif>
+
+            <cfif structKeyExists(form, "busyBlockUsers") AND len(form.busyBlockUsers)>
+                <cfset busyBlockUsers = listToArray(form.busyBlockUsers)>
+            </cfif>
+
+            <cfset eventSvc.setVisibility(
+                newId,
+                eventData.visibilityTier,
+                fullDetailUsers,
+                busyBlockUsers
+            )>
+
+            <cfset auditSvc.log(
+                "event_created",
+                "personal_event",
+                newId,
+                "Created personal event: #form.title#",
+                session.userId
+            )>
+
+            <cfset response["message"] = "Event created.">
+            <cfset response["id"]      = newId>
+        </cfcase>
+
+        <cfcase value="update">
+            <cfif NOT structKeyExists(form, "eventId")>
+                <cfset response = { "success" = false, "message" = "Event ID required." }>
+            <cfelse>
+                <cfset startTimeStr = form.startDate & " " & form.startHour & ":" & form.startMinute & " " & form.startAmPm>
+
+                <cfset endDateVal = structKeyExists(form, "endDate") AND len(form.endDate) ? form.endDate : form.startDate>
+                <cfset endHourVal = structKeyExists(form, "endHour") AND len(form.endHour) ? form.endHour : form.startHour>
+                <cfset endMinVal  = structKeyExists(form, "endMinute") AND len(form.endMinute) ? form.endMinute : form.startMinute>
+                <cfset endAmPmVal = structKeyExists(form, "endAmPm") AND len(form.endAmPm) ? form.endAmPm : form.startAmPm>
+
+                <cfset endTimeStr = endDateVal & " " & endHourVal & ":" & endMinVal & " " & endAmPmVal>
+
+                <cfset eventData = {
+                    userId          = session.userId,
+                    title           = form.title,
+                    startTime       = parseDateTime(startTimeStr),
+                    endTime         = parseDateTime(endTimeStr),
+                    allDay          = structKeyExists(form, "allDay"),
+                    eventDetails    = structKeyExists(form, "eventDetails")    ? form.eventDetails    : "",
+                    address         = structKeyExists(form, "address")         ? form.address         : "",
+                    reminderMinutes = structKeyExists(form, "reminderMinutes") ? form.reminderMinutes : "",
+                    visibilityTier  = structKeyExists(form, "visibilityTier")  ? form.visibilityTier  : "invisible"
+                }>
+
+                <cfset eventSvc.updatePersonalEvent(form.eventId, eventData)>
+
+                <!--- Visibility --->
+                <cfset fullDetailUsers = []>
+                <cfset busyBlockUsers  = []>
+
+                <cfif structKeyExists(form, "fullDetailUsers") AND len(form.fullDetailUsers)>
+                    <cfset fullDetailUsers = listToArray(form.fullDetailUsers)>
+                </cfif>
+
+                <cfif structKeyExists(form, "busyBlockUsers") AND len(form.busyBlockUsers)>
+                    <cfset busyBlockUsers = listToArray(form.busyBlockUsers)>
+                </cfif>
+
+                <cfset eventSvc.setVisibility(
+                    form.eventId,
+                    eventData.visibilityTier,
+                    fullDetailUsers,
+                    busyBlockUsers
+                )>
+
+                <cfset auditSvc.log(
+                    "event_updated",
+                    "personal_event",
+                    form.eventId,
+                    "Updated personal event: #form.title#",
+                    session.userId
+                )>
+
+                <cfset response["message"] = "Event updated.">
+            </cfif>
+        </cfcase>
+
+        <cfcase value="delete">
+            <cfif NOT structKeyExists(form, "eventId")>
+                <cfset response = { "success" = false, "message" = "Event ID required." }>
+            <cfelse>
+                <cfset eventSvc.deletePersonalEvent(form.eventId, session.userId)>
+
+                <cfset auditSvc.log(
+                    "event_deleted",
+                    "personal_event",
+                    form.eventId,
+                    "Deleted personal event",
+                    session.userId
+                )>
+
+                <cfset response["message"] = "Event deleted.">
+            </cfif>
+        </cfcase>
+
+        <cfdefaultcase>
+            <cfset response = { "success" = false, "message" = "Unknown action: #action#" }>
+        </cfdefaultcase>
+
+    </cfswitch>
+
+    <cfcatch type="any">
+        <cfset response = { "success" = false, "message" = cfcatch.message }>
+    </cfcatch>
+
+</cftry>
+
+<cfoutput>#serializeJSON(response)#</cfoutput>

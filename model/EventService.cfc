@@ -1,163 +1,226 @@
-component {
+<cfcomponent>
 
-    function createPersonalEvent(required struct data) {
-        queryExecute(
-            "INSERT INTO polyculy.dbo.personal_events (owner_user_id, title, start_time, end_time, all_day, timezone_id, event_details, address, reminder_minutes, visibility_tier)
-             VALUES (:owner, :title, :startTime, :endTime, :allDay, :tz, :details, :addr, :reminder, :visibility)",
-            {
-                owner: { value: data.userId, cfsqltype: "cf_sql_integer" },
-                title: { value: data.title, cfsqltype: "cf_sql_varchar" },
-                startTime: { value: data.startTime, cfsqltype: "cf_sql_timestamp" },
-                endTime: { value: data.endTime, cfsqltype: "cf_sql_timestamp", null: !len(data.endTime ?: "") },
-                allDay: { value: data.allDay ?: false, cfsqltype: "cf_sql_bit" },
-                tz: { value: data.timezoneId ?: "America/New_York", cfsqltype: "cf_sql_varchar" },
-                details: { value: data.eventDetails ?: "", cfsqltype: "cf_sql_varchar" },
-                addr: { value: data.address ?: "", cfsqltype: "cf_sql_varchar" },
-                reminder: { value: data.reminderMinutes ?: "", cfsqltype: "cf_sql_integer", null: !len(data.reminderMinutes ?: "") },
-                visibility: { value: data.visibilityTier ?: "invisible", cfsqltype: "cf_sql_varchar" }
-            },
-            { result: "qResult" }
-        );
-        return listFirst(qResult.generatedKey);
-    }
+	<cffunction name="createPersonalEvent" access="public" returntype="any">
+		<cfargument name="data" type="struct" required="true">
 
-    function updatePersonalEvent(required numeric eventId, required struct data) {
-        queryExecute(
-            "UPDATE polyculy.dbo.personal_events SET title = :title, start_time = :startTime, end_time = :endTime,
-             all_day = :allDay, event_details = :details, address = :addr,
-             reminder_minutes = :reminder, visibility_tier = :visibility, updated_at = CURRENT_TIMESTAMP
-             WHERE event_id = :eid AND owner_user_id = :owner",
-            {
-                eid: { value: arguments.eventId, cfsqltype: "cf_sql_integer" },
-                owner: { value: data.userId, cfsqltype: "cf_sql_integer" },
-                title: { value: data.title, cfsqltype: "cf_sql_varchar" },
-                startTime: { value: data.startTime, cfsqltype: "cf_sql_timestamp" },
-                endTime: { value: data.endTime, cfsqltype: "cf_sql_timestamp", null: !len(data.endTime ?: "") },
-                allDay: { value: data.allDay ?: false, cfsqltype: "cf_sql_bit" },
-                details: { value: data.eventDetails ?: "", cfsqltype: "cf_sql_varchar" },
-                addr: { value: data.address ?: "", cfsqltype: "cf_sql_varchar" },
-                reminder: { value: data.reminderMinutes ?: "", cfsqltype: "cf_sql_integer", null: !len(data.reminderMinutes ?: "") },
-                visibility: { value: data.visibilityTier ?: "invisible", cfsqltype: "cf_sql_varchar" }
-            }
-        );
-    }
+		<cfset var qResult = "">
 
-    function deletePersonalEvent(required numeric eventId, required numeric userId) {
-        // Clear visibility records
-        queryExecute("DELETE FROM polyculy.dbo.personal_event_visibility WHERE event_id = :eid",
-            { eid: { value: arguments.eventId, cfsqltype: "cf_sql_integer" } });
-        // Cancel event
-        queryExecute(
-            "UPDATE polyculy.dbo.personal_events SET is_cancelled = TRUE, updated_at = CURRENT_TIMESTAMP
-             WHERE event_id = :eid AND owner_user_id = :uid",
-            {
-                eid: { value: arguments.eventId, cfsqltype: "cf_sql_integer" },
-                uid: { value: arguments.userId, cfsqltype: "cf_sql_integer" }
-            }
-        );
-    }
+		<cfquery datasource="polyculy" result="qResult">
+			INSERT INTO polyculy.dbo.personal_events
+				(owner_user_id, title, start_time, end_time, all_day, timezone_id, event_details, address, reminder_minutes, visibility_tier)
+			VALUES
+				(
+					<cfqueryparam value="#arguments.data.userId#" cfsqltype="cf_sql_integer">,
+					<cfqueryparam value="#arguments.data.title#" cfsqltype="cf_sql_varchar">,
+					<cfqueryparam value="#arguments.data.startTime#" cfsqltype="cf_sql_timestamp">,
+					<cfif len(arguments.data.endTime ?: "")>
+						<cfqueryparam value="#arguments.data.endTime#" cfsqltype="cf_sql_timestamp">
+					<cfelse>
+						<cfqueryparam null="true" cfsqltype="cf_sql_timestamp">
+					</cfif>,
+					<cfqueryparam value="#(arguments.data.allDay ?: false)#" cfsqltype="cf_sql_bit">,
+					<cfqueryparam value="#(arguments.data.timezoneId ?: 'America/New_York')#" cfsqltype="cf_sql_varchar">,
+					<cfqueryparam value="#(arguments.data.eventDetails ?: '')#" cfsqltype="cf_sql_varchar">,
+					<cfqueryparam value="#(arguments.data.address ?: '')#" cfsqltype="cf_sql_varchar">,
+					<cfif len(arguments.data.reminderMinutes ?: "")>
+						<cfqueryparam value="#arguments.data.reminderMinutes#" cfsqltype="cf_sql_integer">
+					<cfelse>
+						<cfqueryparam null="true" cfsqltype="cf_sql_integer">
+					</cfif>,
+					<cfqueryparam value="#(arguments.data.visibilityTier ?: 'invisible')#" cfsqltype="cf_sql_varchar">
+				)
+		</cfquery>
 
-    function getPersonalEvent(required numeric eventId) {
-        return queryExecute(
-            "SELECT e.*, u.display_name AS owner_name
-             FROM polyculy.dbo.personal_events e 
-						 			JOIN polyculy.dbo.users u ON e.owner_user_id = u.user_id
-             WHERE e.event_id = :eid AND e.is_cancelled = FALSE",
-            { eid: { value: arguments.eventId, cfsqltype: "cf_sql_integer" } }
-        );
-    }
+		<cfreturn listFirst(qResult.generatedKey)>
+	</cffunction>
 
-    function getPersonalEventsForUser(required numeric userId, string startDate = "", string endDate = "") {
-        var sql = "SELECT e.*, u.display_name AS owner_name
-                   FROM polyculy.dbo.personal_events e 
-									 			JOIN polyculy.dbo.users u ON e.owner_user_id = u.user_id
-                   WHERE e.owner_user_id = :uid AND e.is_cancelled = FALSE";
-        var params = { uid: { value: arguments.userId, cfsqltype: "cf_sql_integer" } };
+	<cffunction name="updatePersonalEvent" access="public" returntype="void">
+		<cfargument name="eventId" type="numeric" required="true">
+		<cfargument name="data" type="struct" required="true">
 
-        if (len(arguments.startDate)) {
-            sql &= " AND e.start_time >= :sd";
-            params["sd"] = { value: arguments.startDate, cfsqltype: "cf_sql_timestamp" };
-        }
-        if (len(arguments.endDate)) {
-            sql &= " AND e.start_time <= :ed";
-            params["ed"] = { value: arguments.endDate, cfsqltype: "cf_sql_timestamp" };
-        }
-        sql &= " ORDER BY e.start_time";
-        return queryExecute(sql, params);
-    }
+		<cfquery datasource="polyculy">
+			UPDATE polyculy.dbo.personal_events
+			SET
+				title = <cfqueryparam value="#arguments.data.title#" cfsqltype="cf_sql_varchar">,
+				start_time = <cfqueryparam value="#arguments.data.startTime#" cfsqltype="cf_sql_timestamp">,
+				end_time =
+					<cfif len(arguments.data.endTime ?: "")>
+						<cfqueryparam value="#arguments.data.endTime#" cfsqltype="cf_sql_timestamp">
+					<cfelse>
+						<cfqueryparam null="true" cfsqltype="cf_sql_timestamp">
+					</cfif>,
+				all_day = <cfqueryparam value="#(arguments.data.allDay ?: false)#" cfsqltype="cf_sql_bit">,
+				event_details = <cfqueryparam value="#(arguments.data.eventDetails ?: '')#" cfsqltype="cf_sql_varchar">,
+				address = <cfqueryparam value="#(arguments.data.address ?: '')#" cfsqltype="cf_sql_varchar">,
+				reminder_minutes =
+					<cfif len(arguments.data.reminderMinutes ?: "")>
+						<cfqueryparam value="#arguments.data.reminderMinutes#" cfsqltype="cf_sql_integer">
+					<cfelse>
+						<cfqueryparam null="true" cfsqltype="cf_sql_integer">
+					</cfif>,
+				visibility_tier = <cfqueryparam value="#(arguments.data.visibilityTier ?: 'invisible')#" cfsqltype="cf_sql_varchar">,
+				updated_at = CURRENT_TIMESTAMP
+			WHERE
+				event_id = <cfqueryparam value="#arguments.eventId#" cfsqltype="cf_sql_integer">
+				AND owner_user_id = <cfqueryparam value="#arguments.data.userId#" cfsqltype="cf_sql_integer">
+		</cfquery>
+	</cffunction>
 
-    function getVisibleEventsForViewer(required numeric viewerUserId, required numeric ownerUserId, string startDate = "", string endDate = "") {
-        var sql = "SELECT e.event_id, e.title, e.start_time, e.end_time, e.all_day, e.timezone_id,
-                          e.event_details, e.address, e.owner_user_id, v.visibility_type,
-                          u.display_name AS owner_name
-                   FROM polyculy.dbo.personal_events e
-                   			JOIN polyculy.dbo.personal_event_visibility v ON e.event_id = v.event_id
-                   			JOIN polyculy.dbo.users u ON e.owner_user_id = u.user_id
-                   WHERE v.target_user_id = :viewer AND e.owner_user_id = :owner AND e.is_cancelled = FALSE";
-        var params = {
-            viewer: { value: arguments.viewerUserId, cfsqltype: "cf_sql_integer" },
-            owner: { value: arguments.ownerUserId, cfsqltype: "cf_sql_integer" }
-        };
-        if (len(arguments.startDate)) {
-            sql &= " AND e.start_time >= :sd";
-            params["sd"] = { value: arguments.startDate, cfsqltype: "cf_sql_timestamp" };
-        }
-        if (len(arguments.endDate)) {
-            sql &= " AND e.start_time <= :ed";
-            params["ed"] = { value: arguments.endDate, cfsqltype: "cf_sql_timestamp" };
-        }
-        sql &= " ORDER BY e.start_time";
-        return queryExecute(sql, params);
-    }
+	<cffunction name="deletePersonalEvent" access="public" returntype="void">
+		<cfargument name="eventId" type="numeric" required="true">
+		<cfargument name="userId" type="numeric" required="true">
 
-    function setVisibility(required numeric eventId, required string tier, array fullDetailUsers = [], array busyBlockUsers = []) {
-        // Clear existing visibility records
-        queryExecute("DELETE FROM polyculy.dbo.personal_event_visibility WHERE event_id = :eid",
-            { eid: { value: arguments.eventId, cfsqltype: "cf_sql_integer" } });
+		<!--- Clear visibility records --->
+		<cfquery datasource="polyculy">
+			DELETE FROM polyculy.dbo.personal_event_visibility
+			WHERE event_id = <cfqueryparam value="#arguments.eventId#" cfsqltype="cf_sql_integer">
+		</cfquery>
 
-        // Update the tier on the event itself
-        queryExecute(
-            "	UPDATE polyculy.dbo.personal_events 
-							SET visibility_tier = :tier, updated_at = CURRENT_TIMESTAMP 
-							WHERE event_id = :eid",
-            {
-                eid: { value: arguments.eventId, cfsqltype: "cf_sql_integer" },
-                tier: { value: arguments.tier, cfsqltype: "cf_sql_varchar" }
-            }
-        );
+		<!--- Cancel event --->
+		<cfquery datasource="polyculy">
+			UPDATE polyculy.dbo.personal_events
+			SET is_cancelled = TRUE,
+			    updated_at = CURRENT_TIMESTAMP
+			WHERE
+				event_id = <cfqueryparam value="#arguments.eventId#" cfsqltype="cf_sql_integer">
+				AND owner_user_id = <cfqueryparam value="#arguments.userId#" cfsqltype="cf_sql_integer">
+		</cfquery>
+	</cffunction>
 
-        if (arguments.tier == "invisible") return;
+	<cffunction name="getPersonalEvent" access="public" returntype="query">
+		<cfargument name="eventId" type="numeric" required="true">
 
-        // Insert full-details visibility records
-        for (var uid in arguments.fullDetailUsers) {
-            queryExecute(
-                "INSERT INTO polyculy.dbo.personal_event_visibility (event_id, target_user_id, visibility_type) VALUES (:eid, :uid, 'full_details')",
-                {
-                    eid: { value: arguments.eventId, cfsqltype: "cf_sql_integer" },
-                    uid: { value: uid, cfsqltype: "cf_sql_integer" }
-                }
-            );
-        }
+		<cfquery name="qEvent" datasource="polyculy">
+			SELECT e.*, u.display_name AS owner_name
+			FROM polyculy.dbo.personal_events e
+				JOIN polyculy.dbo.users u ON e.owner_user_id = u.user_id
+			WHERE
+				e.event_id = <cfqueryparam value="#arguments.eventId#" cfsqltype="cf_sql_integer">
+				AND e.is_cancelled = FALSE
+		</cfquery>
 
-        // Insert busy-block visibility records
-        for (var uid in arguments.busyBlockUsers) {
-            queryExecute(
-                "INSERT INTO polyculy.dbo.personal_event_visibility (event_id, target_user_id, visibility_type) VALUES (:eid, :uid, 'busy_block')",
-                {
-                    eid: { value: arguments.eventId, cfsqltype: "cf_sql_integer" },
-                    uid: { value: uid, cfsqltype: "cf_sql_integer" }
-                }
-            );
-        }
-    }
+		<cfreturn qEvent>
+	</cffunction>
 
-    function getVisibilityRecords(required numeric eventId) {
-        return queryExecute(
-            "	SELECT v.*, u.display_name 
-							FROM  polyculy.dbo.personal_event_visibility v
-             				JOIN polyculy.dbo.users u ON v.target_user_id = u.user_id WHERE v.event_id = :eid",
-            { eid: { value: arguments.eventId, cfsqltype: "cf_sql_integer" } }
-        );
-    }
+	<cffunction name="getPersonalEventsForUser" access="public" returntype="query">
+		<cfargument name="userId" type="numeric" required="true">
+		<cfargument name="startDate" type="string" required="false" default="">
+		<cfargument name="endDate" type="string" required="false" default="">
 
-}
+		<cfquery name="qPersonalEventsForUser" datasource="#application.datasource#">
+			SELECT 	e.*, u.display_name AS owner_name
+			FROM 		polyculy.dbo.personal_events e
+							JOIN polyculy.dbo.users u ON e.owner_user_id = u.user_id
+			WHERE		e.owner_user_id = <cfqueryparam value="#arguments.userId#" cfsqltype="cf_sql_integer">
+			 				AND isNull(e.is_cancelled, 0) = 0
+							<cfif len(arguments.startDate) AND isDate(arguments.startDate)>
+								AND e.start_time >= <cfqueryparam value="#arguments.startDate#" cfsqltype="cf_sql_timestamp">
+							</cfif>
+							<cfif len(arguments.endDate) AND isDate(arguments.endDate)>
+								AND e.start_time <= <cfqueryparam value="#arguments.endDate#" cfsqltype="cf_sql_timestamp">
+							</cfif>
+							ORDER BY e.start_time							
+		</cfquery>
+		
+		<cfreturn qPersonalEventsForUser>
+	</cffunction>
+
+	<cffunction name="getVisibleEventsForViewer" access="public" returntype="query">
+		<cfargument name="viewerUserId" type="numeric" required="true">
+		<cfargument name="ownerUserId" type="numeric" required="true">
+		<cfargument name="startDate" type="string" required="false" default="">
+		<cfargument name="endDate" type="string" required="false" default="">
+
+		<cfset var q = "">
+
+		<cfquery name="q" datasource="polyculy">
+			SELECT
+				e.event_id, e.title, e.start_time, e.end_time, e.all_day, e.timezone_id,
+				e.event_details, e.address, e.owner_user_id, v.visibility_type,
+				u.display_name AS owner_name
+			FROM polyculy.dbo.personal_events e
+				JOIN polyculy.dbo.personal_event_visibility v ON e.event_id = v.event_id
+				JOIN polyculy.dbo.users u ON e.owner_user_id = u.user_id
+			WHERE
+				v.target_user_id = <cfqueryparam value="#arguments.viewerUserId#" cfsqltype="cf_sql_integer">
+				AND e.owner_user_id = <cfqueryparam value="#arguments.ownerUserId#" cfsqltype="cf_sql_integer">
+				AND e.is_cancelled = FALSE
+			<cfif len(arguments.startDate)>
+				AND e.start_time >= <cfqueryparam value="#arguments.startDate#" cfsqltype="cf_sql_timestamp">
+			</cfif>
+			<cfif len(arguments.endDate)>
+				AND e.start_time <= <cfqueryparam value="#arguments.endDate#" cfsqltype="cf_sql_timestamp">
+			</cfif>
+			ORDER BY e.start_time
+		</cfquery>
+
+		<cfreturn q>
+	</cffunction>
+
+	<cffunction name="setVisibility" access="public" returntype="void">
+		<cfargument name="eventId" type="numeric" required="true">
+		<cfargument name="tier" type="string" required="true">
+		<cfargument name="fullDetailUsers" type="array" required="false" default="#[]#">
+		<cfargument name="busyBlockUsers" type="array" required="false" default="#[]#">
+
+		<!--- Clear existing visibility records --->
+		<cfquery datasource="polyculy">
+			DELETE FROM polyculy.dbo.personal_event_visibility
+			WHERE event_id = <cfqueryparam value="#arguments.eventId#" cfsqltype="cf_sql_integer">
+		</cfquery>
+
+		<!--- Update the tier on the event itself --->
+		<cfquery datasource="polyculy">
+			UPDATE polyculy.dbo.personal_events
+			SET visibility_tier = <cfqueryparam value="#arguments.tier#" cfsqltype="cf_sql_varchar">,
+			    updated_at = CURRENT_TIMESTAMP
+			WHERE event_id = <cfqueryparam value="#arguments.eventId#" cfsqltype="cf_sql_integer">
+		</cfquery>
+
+		<cfif arguments.tier EQ "invisible">
+			<cfreturn>
+		</cfif>
+
+		<!--- Insert full-details visibility records --->
+		<cfloop array="#arguments.fullDetailUsers#" index="uid">
+			<cfquery datasource="polyculy">
+				INSERT INTO polyculy.dbo.personal_event_visibility
+					(event_id, target_user_id, visibility_type)
+				VALUES
+					(
+						<cfqueryparam value="#arguments.eventId#" cfsqltype="cf_sql_integer">,
+						<cfqueryparam value="#uid#" cfsqltype="cf_sql_integer">,
+						'full_details'
+					)
+			</cfquery>
+		</cfloop>
+
+		<!--- Insert busy-block visibility records --->
+		<cfloop array="#arguments.busyBlockUsers#" index="uid">
+			<cfquery datasource="polyculy">
+				INSERT INTO polyculy.dbo.personal_event_visibility
+					(event_id, target_user_id, visibility_type)
+				VALUES
+					(
+						<cfqueryparam value="#arguments.eventId#" cfsqltype="cf_sql_integer">,
+						<cfqueryparam value="#uid#" cfsqltype="cf_sql_integer">,
+						'busy_block'
+					)
+			</cfquery>
+		</cfloop>
+	</cffunction>
+
+	<cffunction name="getVisibilityRecords" access="public" returntype="query">
+		<cfargument name="eventId" type="numeric" required="true">
+
+		<cfquery name="q" datasource="polyculy">
+			SELECT v.*, u.display_name
+			FROM polyculy.dbo.personal_event_visibility v
+				JOIN polyculy.dbo.users u ON v.target_user_id = u.user_id
+			WHERE v.event_id = <cfqueryparam value="#arguments.eventId#" cfsqltype="cf_sql_integer">
+		</cfquery>
+
+		<cfreturn q>
+	</cffunction>
+
+</cfcomponent>

@@ -1,103 +1,155 @@
-component {
+<cfcomponent>
 
-    function create(required numeric eventId, required numeric userId, required string proposedStart, required string proposedEnd, string message = "") {
-        // Withdraw any existing active proposal by this user for this event
-        queryExecute(
-            "UPDATE polyculy.dbo.proposals SET status = 'withdrawn', updated_at = CURRENT_TIMESTAMP
-             WHERE shared_event_id = :eid AND proposer_user_id = :uid AND status = 'active'",
-            {
-                eid: { value: arguments.eventId, cfsqltype: "cf_sql_integer" },
-                uid: { value: arguments.userId, cfsqltype: "cf_sql_integer" }
-            }
-        );
+	<cffunction name="create" access="public" returntype="void">
+		<cfargument name="eventId" type="numeric" required="true">
+		<cfargument name="userId" type="numeric" required="true">
+		<cfargument name="proposedStart" type="string" required="true">
+		<cfargument name="proposedEnd" type="string" required="true">
+		<cfargument name="message" type="string" required="false" default="">
 
-        queryExecute(
-            "INSERT INTO polyculy.dbo.proposals (shared_event_id, proposer_user_id, proposed_start, proposed_end, message, status)
-             VALUES (:eid, :uid, :pstart, :pend, :msg, 'active')",
-            {
-                eid: { value: arguments.eventId, cfsqltype: "cf_sql_integer" },
-                uid: { value: arguments.userId, cfsqltype: "cf_sql_integer" },
-                pstart: { value: arguments.proposedStart, cfsqltype: "cf_sql_timestamp" },
-                pend: { value: arguments.proposedEnd, cfsqltype: "cf_sql_timestamp" },
-                msg: { value: arguments.message, cfsqltype: "cf_sql_varchar", null: !len(arguments.message) }
-            }
-        );
-    }
+		<!--- Withdraw any existing active proposal by this user for this event --->
+		<cfquery datasource="polyculy">
+			UPDATE polyculy.dbo.proposals
+			SET status = 'withdrawn',
+				updated_at = CURRENT_TIMESTAMP
+			WHERE
+				shared_event_id = <cfqueryparam value="#arguments.eventId#" cfsqltype="cf_sql_integer">
+				AND proposer_user_id = <cfqueryparam value="#arguments.userId#" cfsqltype="cf_sql_integer">
+				AND status = 'active'
+		</cfquery>
 
-    function getActiveByEvent(required numeric eventId) {
-        return queryExecute(
-            "SELECT p.*, u.display_name AS proposer_name, u.avatar_url AS proposer_avatar
-             FROM polyculy.dbo.proposals p 
-						 JOIN polyculy.dbo.users u ON p.proposer_user_id = u.user_id
-             WHERE p.shared_event_id = :eid AND p.status = 'active'
-             ORDER BY p.created_at DESC",
-            { eid: { value: arguments.eventId, cfsqltype: "cf_sql_integer" } }
-        );
-    }
+		<cfquery datasource="polyculy">
+			INSERT INTO polyculy.dbo.proposals
+				(shared_event_id, proposer_user_id, proposed_start, proposed_end, message, status)
+			VALUES
+				(
+					<cfqueryparam value="#arguments.eventId#" cfsqltype="cf_sql_integer">,
+					<cfqueryparam value="#arguments.userId#" cfsqltype="cf_sql_integer">,
+					<cfqueryparam value="#arguments.proposedStart#" cfsqltype="cf_sql_timestamp">,
+					<cfqueryparam value="#arguments.proposedEnd#" cfsqltype="cf_sql_timestamp">,
+					<cfif len(arguments.message)>
+						<cfqueryparam value="#arguments.message#" cfsqltype="cf_sql_varchar">
+					<cfelse>
+						<cfqueryparam null="true" cfsqltype="cf_sql_varchar">
+					</cfif>,
+					'active'
+				)
+		</cfquery>
+	</cffunction>
 
-    function getAllByEvent(required numeric eventId) {
-        return queryExecute(
-            "SELECT p.*, u.display_name AS proposer_name, u.avatar_url AS proposer_avatar
-             FROM polyculy.dbo.proposals p JOIN users u ON p.proposer_user_id = u.user_id
-             WHERE p.shared_event_id = :eid
-             ORDER BY p.created_at DESC",
-            { eid: { value: arguments.eventId, cfsqltype: "cf_sql_integer" } }
-        );
-    }
+	<cffunction name="getActiveByEvent" access="public" returntype="query">
+		<cfargument name="eventId" type="numeric" required="true">
 
-    function acceptProposal(required numeric proposalId) {
-        var proposal = queryExecute(
-            "SELECT * FROM polyculy.dbo.proposals WHERE proposal_id = :pid AND status = 'active'",
-            { pid: { value: arguments.proposalId, cfsqltype: "cf_sql_integer" } }
-        );
-        if (!proposal.recordCount) return { success: false, message: "Proposal not found or not active." };
+		<cfset var q = "">
 
-        // Mark proposal as accepted
-        queryExecute(
-            "UPDATE polyculy.dbo.proposals SET status = 'accepted', updated_at = CURRENT_TIMESTAMP WHERE proposal_id = :pid",
-            { pid: { value: arguments.proposalId, cfsqltype: "cf_sql_integer" } }
-        );
+		<cfquery name="q" datasource="polyculy">
+			SELECT
+				p.*,
+				u.display_name AS proposer_name,
+				u.avatar_url AS proposer_avatar
+			FROM polyculy.dbo.proposals p
+				JOIN polyculy.dbo.users u ON p.proposer_user_id = u.user_id
+			WHERE
+				p.shared_event_id = <cfqueryparam value="#arguments.eventId#" cfsqltype="cf_sql_integer">
+				AND p.status = 'active'
+			ORDER BY p.created_at DESC
+		</cfquery>
 
-        // Reject all other active proposals for this event
-        queryExecute(
-            "UPDATE polyculy.dbo.proposals SET status = 'rejected', updated_at = CURRENT_TIMESTAMP
-             WHERE shared_event_id = :eid AND proposal_id != :pid AND status = 'active'",
-            {
-                eid: { value: proposal.shared_event_id, cfsqltype: "cf_sql_integer" },
-                pid: { value: arguments.proposalId, cfsqltype: "cf_sql_integer" }
-            }
-        );
+		<cfreturn q>
+	</cffunction>
 
-        // Update event time (material edit)
-        queryExecute(
-            "UPDATE polyculy.dbo.shared_events SET start_time = :st, end_time = :et, updated_at = CURRENT_TIMESTAMP
-             WHERE shared_event_id = :eid",
-            {
-                eid: { value: proposal.shared_event_id, cfsqltype: "cf_sql_integer" },
-                st: { value: proposal.proposed_start, cfsqltype: "cf_sql_timestamp" },
-                et: { value: proposal.proposed_end, cfsqltype: "cf_sql_timestamp" }
-            }
-        );
+	<cffunction name="getAllByEvent" access="public" returntype="query">
+		<cfargument name="eventId" type="numeric" required="true">
 
-        // Reset all participant acceptances to pending
-        queryExecute(
-            "UPDATE polyculy.dbo.shared_event_participants SET response_status = 'pending', updated_at = CURRENT_TIMESTAMP
-             WHERE shared_event_id = :eid AND is_removed = FALSE",
-            { eid: { value: proposal.shared_event_id, cfsqltype: "cf_sql_integer" } }
-        );
+		<cfset var q = "">
 
-        // Recalculate state
-        var seSvc = new SharedEventService();
-        seSvc.recalculateState(proposal.shared_event_id);
+		<cfquery name="q" datasource="polyculy">
+			SELECT
+				p.*,
+				u.display_name AS proposer_name,
+				u.avatar_url AS proposer_avatar
+			FROM polyculy.dbo.proposals p
+				JOIN polyculy.dbo.users u ON p.proposer_user_id = u.user_id
+			WHERE p.shared_event_id = <cfqueryparam value="#arguments.eventId#" cfsqltype="cf_sql_integer">
+			ORDER BY p.created_at DESC
+		</cfquery>
 
-        return { success: true, eventId: proposal.shared_event_id };
-    }
+		<cfreturn q>
+	</cffunction>
 
-    function rejectProposal(required numeric proposalId) {
-        queryExecute(
-            "UPDATE polyculy.dbo.proposals SET status = 'rejected', updated_at = CURRENT_TIMESTAMP WHERE proposal_id = :pid",
-            { pid: { value: arguments.proposalId, cfsqltype: "cf_sql_integer" } }
-        );
-    }
+	<cffunction name="acceptProposal" access="public" returntype="struct">
+		<cfargument name="proposalId" type="numeric" required="true">
 
-}
+		<cfset var proposal = "">
+		<cfset var seSvc = "">
+
+		<cfquery name="proposal" datasource="polyculy">
+			SELECT *
+			FROM polyculy.dbo.proposals
+			WHERE
+				proposal_id = <cfqueryparam value="#arguments.proposalId#" cfsqltype="cf_sql_integer">
+				AND status = 'active'
+		</cfquery>
+
+		<cfif NOT proposal.recordCount>
+			<cfreturn { success = false, message = "Proposal not found or not active." }>
+		</cfif>
+
+		<!--- Mark proposal as accepted --->
+		<cfquery datasource="polyculy">
+			UPDATE polyculy.dbo.proposals
+			SET status = 'accepted',
+				updated_at = CURRENT_TIMESTAMP
+			WHERE proposal_id = <cfqueryparam value="#arguments.proposalId#" cfsqltype="cf_sql_integer">
+		</cfquery>
+
+		<!--- Reject all other active proposals for this event --->
+		<cfquery datasource="polyculy">
+			UPDATE polyculy.dbo.proposals
+			SET status = 'rejected',
+				updated_at = CURRENT_TIMESTAMP
+			WHERE
+				shared_event_id = <cfqueryparam value="#proposal.shared_event_id#" cfsqltype="cf_sql_integer">
+				AND proposal_id != <cfqueryparam value="#arguments.proposalId#" cfsqltype="cf_sql_integer">
+				AND status = 'active'
+		</cfquery>
+
+		<!--- Update event time (material edit) --->
+		<cfquery datasource="polyculy">
+			UPDATE polyculy.dbo.shared_events
+			SET
+				start_time = <cfqueryparam value="#proposal.proposed_start#" cfsqltype="cf_sql_timestamp">,
+				end_time = <cfqueryparam value="#proposal.proposed_end#" cfsqltype="cf_sql_timestamp">,
+				updated_at = CURRENT_TIMESTAMP
+			WHERE shared_event_id = <cfqueryparam value="#proposal.shared_event_id#" cfsqltype="cf_sql_integer">
+		</cfquery>
+
+		<!--- Reset all participant acceptances to pending --->
+		<cfquery datasource="polyculy">
+			UPDATE polyculy.dbo.shared_event_participants
+			SET response_status = 'pending',
+				updated_at = CURRENT_TIMESTAMP
+			WHERE
+				shared_event_id = <cfqueryparam value="#proposal.shared_event_id#" cfsqltype="cf_sql_integer">
+				AND is_removed = FALSE
+		</cfquery>
+
+		<!--- Recalculate state --->
+		<cfset seSvc = createObject("component", "SharedEventService")>
+		<cfset seSvc.recalculateState(proposal.shared_event_id)>
+
+		<cfreturn { success = true, eventId = proposal.shared_event_id }>
+	</cffunction>
+
+	<cffunction name="rejectProposal" access="public" returntype="void">
+		<cfargument name="proposalId" type="numeric" required="true">
+
+		<cfquery datasource="polyculy">
+			UPDATE polyculy.dbo.proposals
+			SET status = 'rejected',
+				updated_at = CURRENT_TIMESTAMP
+			WHERE proposal_id = <cfqueryparam value="#arguments.proposalId#" cfsqltype="cf_sql_integer">
+		</cfquery>
+	</cffunction>
+
+</cfcomponent>
