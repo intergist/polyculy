@@ -247,12 +247,23 @@ body {
     margin-top: 0.5rem;
 }
 .auth-tagline {
-    color: var(--purple-600);
+    color: #663399;
+		/* var(--purple-600); */
     font-size: 1.1rem;
     font-weight: 500;
     font-style: italic;
     margin-bottom: 1rem;
+		font-family: "Trebuchet MS", Helvetica, Arial, sans-serif;
 }
+
+auth-title: {
+	color: #663399;
+	font-weight:bold;
+	font-family: "Trebuchet MS", Helvetica, Arial, sans-serif;
+	font-size: 120px !important;
+}
+
+
 .auth-subtitle {
     color: var(--gray-500);
     font-size: 0.85rem;
@@ -1079,16 +1090,37 @@ body {
 .alert-inline.warning { background: #FEF3C7; color: #92400E; border: 1px solid #FCD34D; }
 
 
-.btn-purple {
+.btn-primary-purple {
   background-color: #a372e0; /* $purple-400 */
   border-color: #a372e0;
   color: white; /* Or another suitable color */
 }
 
-.btn-purple:hover,
-.btn-purple:focus,
-.btn-purple:active {
+.btn-primary-purple:hover,
+.btn-primary-purple:focus,
+.btn-primary-purple:active {
   background-color: #9063c9; /* Slightly darker shade for hover */
   border-color: #9063c9;
   color: white;
 }
+
+.btn-outline-purple {
+  color: #663399; /* The text color for the button */
+  border-color: #663399; /* The border color for the button 6f42c1 */
+}
+
+.btn-outline-purple:hover,
+.btn-outline-purple:focus,
+.btn-outline-purple:active,
+.btn-outline-purple.active,
+.btn-outline-purple:not(:disabled):not(.disabled):active {
+  color: #fff; /* White text on hover/active */
+  background-color: #6f42c1; /* Purple background on hover/active */
+  border-color: #6f42c1; /* Purple border on hover/active */
+  box-shadow: none; /* Optional: remove default focus box shadow if desired */
+}
+
+.input-icon-wrap {
+	height:38px; 
+}
+

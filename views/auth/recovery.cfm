@@ -1,33 +1,52 @@
 <cf_main pageTitle="Password Recovery" showNav="false">
 <cfoutput>
-<div class="auth-page">
-    <div class="auth-container">
-        <div class="auth-logo-area">
-            <svg width="48" height="48" viewBox="0 0 40 40" fill="none">
-                <path d="M15 6C10 6 6 10 6 15C6 25 23 34 23 34C23 34 40 25 40 15C40 10 36 6 31 6C27.5 6 24.5 8 23 11C21.5 8 18.5 6 15 6Z" fill="url(##hg2)" opacity="0.8"/>
-                <defs>
-                    <linearGradient id="hg2" x1="6" y1="6" x2="40" y2="34" gradientUnits="userSpaceOnUse"><stop stop-color="##A855F7"/><stop offset="1" stop-color="##7C3AED"/></linearGradient>
-                </defs>
-            </svg>
-            <h1 class="auth-title" style="font-size:1.5rem;">Let's get you back to Polyculy</h1>
-        </div>
 
-        <form id="recoveryForm" onsubmit="return handleRecovery(event)">
-            <div class="form-floating-group">
-                <div class="input-icon-wrap">
-                    <i class="fas fa-envelope input-icon"></i>
-                    <input type="email" id="recoveryEmail" data-testid="recovery-email" class="form-control" placeholder="Email" required>
-                </div>
-            </div>
-            <div class="form-message" id="recoveryMessage" data-testid="recovery-message" style="display:none;"></div>
-            <button type="submit" class="btn btn-primary-purple w-100" id="recoveryBtn">Continue</button>
-        </form>
-
-        <div class="auth-links">
-            Remembered? <a href="/views/auth/login.cfm"><strong>Log in</strong></a>
-        </div>
-    </div>
+<div id="" class="d-flex justify-content-center align-items-center">
+	<div class="shadow p-3 mt-5 mb-5 bg-white rounded">
+		<div class="row auth-logo-area">
+			<div class="col-3">
+				<img src="/images/polyculy_logo_xs.png" width="75" height="66" title="Polyculy"/>
+			</div>
+			<div class="col">
+				<span class="auth-title" style="font-size:36px;">Polyculy</span><br />
+				<span class="auth-tagline">Calendar that keeps up</span>
+			</div>
+		</div>
+		<p class="auth-subtitle">Multi-dimensional management of polyamorous relationhips</p>
+		<hr />
+		<h1 class="auth-title" style="font-size:1.5rem;">Let's get you back to Polyculy</h1>
+		<div class="form-message" id="recoveryMessage" data-testid="recovery-message" style="display:none;"></div>
+		
+		<form id="recoveryForm" onsubmit="return handleRecovery(event)">
+		<div class="row">
+			<div class="col">
+				<div class="input-group mb-3">
+					<div class="input-group-prepend">
+						<div class="input-group-text">@</div>
+					</div>
+					<input type="email" id="recoveryEmail" data-testid="recovery-email" class="form-control" placeholder="Email" required autocomplete="email">
+				</div>
+			</div>
+		</div>
+		<div class="row justify-content-center">
+			<button type="submit" class="btn btn-primary-purple col-md-5" id="recoveryBtn">Continue</button>
+		</div>
+		<div class="row">
+			<div class="col">
+				Remembered? <a href="/views/auth/login.cfm">Log in</a>
+			</div>
+			<div class="col-6">
+				<p class="float-right">
+					<!---? <span class="auth-link-divider">&middot;</span> --->
+					Not a member? <a href="/views/auth/signup.cfm" data-testid="signup-link">Sign up</a>
+				</p>
+			</div>
+		</div>
+	</form>
+  </div>
 </div>
+
+
 
 <script>
 function handleRecovery(e) {

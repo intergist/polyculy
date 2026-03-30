@@ -1,6 +1,115 @@
 <cf_main pageTitle="Sign Up" showNav="false">
 <cfoutput>
-<div class="auth-page">
+
+<div id="" class="d-flex justify-content-center align-items-center">
+	<div class="shadow p-3 mt-5 mb-5 bg-white rounded">
+		<div class="row auth-logo-area">
+			<div class="col-3">
+				<img src="/images/polyculy_logo_xs.png" width="75" height="66" title="Polyculy"/>
+			</div>
+			<div class="col">
+				<span class="auth-title" style="font-size:36px;">Polyculy</span><br />
+				<span class="auth-tagline">Calendar that keeps up</span>
+			</div>
+		</div>
+ 		<div class="row">
+			<div class="col">
+				<span class="auth-subtitle">Multi-dimensional management of polyamorous relationhips</p>
+				<hr />
+				<h1 class="auth-title" style="font-size:1.6rem;">Welcome to Polyculy!</h1>
+			</div>
+		</div>
+		
+		<!---[ Step 1: Email + License Code ]--->
+		<div class="row" id="signupStep1">
+	
+ 		<form id="signupForm1" onsubmit="return handleSignupStep1(event)">
+			<span class="auth-subtitle">Enter a license code you received by gift, promo, or purchase</span>
+			<div class="row">
+				<div class="col">
+					<div class="input-group mb-3">
+						<div class="input-group-prepend">
+							<div class="input-group-text input-icon-wrap">@</div>
+						</div>
+						<input type="email" id="signupEmail" data-testid="signup-email" class="form-control" placeholder="Email Address" required>
+					</div>
+						
+					<div class="input-group mb-3">
+						<div class="input-group-prepend">
+							<div class="input-group-text input-icon-wrap"><i class="fas fa-key input-icon"></i></div>
+						</div>
+						<input type="text" id="signupLicenceCode" data-testid="signup-licence" class="form-control" placeholder="License Code" required>
+					</div>
+					<div class="form-message" id="signupMessage1" data-testid="signup-message" style="display:none;"></div>
+				</div>		
+			</div>
+			<div class="row justify-content-center">
+				<button type="submit" class="btn btn-primary-purple w-50" id="signupBtn1">Continue</button>
+			</div>
+			<div class="row">
+				<div class="col">
+					<span style="font-size:0.75rem;">*New users may receive their own license for free during promo/seeding periods.<br />Additional licenses for partners may require a purchased pack.</span>
+				</div>
+			</div>
+		</form>
+		</div>
+		
+		<!---[ Step 2: Set Password + Display Name ]--->
+		<div class="row" id="signupStep2" style="display:none;">
+			<form id="signupForm2" onsubmit="return handleSignupStep2(event)">
+				<div class="row">
+					<div class="col">
+						<div class="input-group mb-3">
+							<div class="input-group-prepend">
+								<div class="input-group-text input-icon-wrap"><i class="fas fa-user"></i></div>
+							</div>
+							<input type="text" id="signupDisplayName" class="form-control" placeholder="Display Name" required>
+						</div>
+						
+						<div class="input-group mb-3">
+							<div class="input-group-prepend">
+								<div class="input-group-text input-icon-wrap"><i class="fas fa-lock"></i></div>
+							</div>
+							<input type="password" id="signupPassword" class="form-control" placeholder="Password (min 6 characters)" required minlength="6">
+						</div>
+	
+						<div class="input-group mb-3">
+							<div class="input-group-prepend">
+								<div class="input-group-text input-icon-wrap"><i class="fas fa-lock"></i></div>
+							</div>
+							<input type="password" id="signupPasswordConfirm" class="form-control" placeholder="Confirm Password" required minlength="6">
+						</div>
+					</div>
+				</div>
+				<div class="row justify-content-center">
+					<div class="form-message" id="signupMessage2" style="display:none;"></div>
+					<button type="submit" class="btn btn-primary-purple w-50" id="signupBtn2">Create Account</button>
+				</div>
+			</form>
+		</div>
+
+
+						
+		
+
+				
+ 				<div class="row mt-3">
+					<div class="col">
+						Already a member? <a href="/views/auth/login.cfm">Log in</a>
+					</div>
+				</div> <!------>
+				
+				
+				
+		
+  </div>
+</div>		
+		
+		
+
+
+
+<!--- <div class="auth-page">
     <div class="auth-container">
         <div class="auth-logo-area">
             <svg width="48" height="48" viewBox="0 0 40 40" fill="none">
@@ -11,62 +120,12 @@
                     <linearGradient id="hg2" x1="6" y1="6" x2="40" y2="34" gradientUnits="userSpaceOnUse"><stop stop-color="##A855F7"/><stop offset="1" stop-color="##7C3AED"/></linearGradient>
                 </defs>
             </svg>
-            <h1 class="auth-title" style="font-size:1.6rem;">Welcome to Polyculy!</h1>
+            
         </div>
 
-        <!--- Step 1: Email + Licence Code --->
-        <div id="signupStep1">
-            <form id="signupForm1" onsubmit="return handleSignupStep1(event)">
-                <div class="form-floating-group">
-                    <div class="input-icon-wrap">
-                        <i class="fas fa-envelope input-icon"></i>
-                        <input type="email" id="signupEmail" data-testid="signup-email" class="form-control" placeholder="Email Address" required>
-                    </div>
-                </div>
-                <div class="form-floating-group">
-                    <div class="input-icon-wrap">
-                        <i class="fas fa-key input-icon"></i>
-                        <input type="text" id="signupLicenceCode" data-testid="signup-licence" class="form-control" placeholder="Licence Code" required>
-                    </div>
-                </div>
-                <p class="auth-helper-text">Enter a licence code you received by gift, promo, or purchase.</p>
-                <p class="auth-helper-text" style="font-size:0.75rem;">New users may receive their own licence for free during promo/seeding periods; additional licences for partners may require a purchased pack.</p>
-                <div class="form-message" id="signupMessage1" data-testid="signup-message" style="display:none;"></div>
-                <button type="submit" class="btn btn-primary-purple w-100" id="signupBtn1">Continue</button>
-            </form>
-        </div>
 
-        <!--- Step 2: Set Password + Display Name --->
-        <div id="signupStep2" style="display:none;">
-            <form id="signupForm2" onsubmit="return handleSignupStep2(event)">
-                <div class="form-floating-group">
-                    <div class="input-icon-wrap">
-                        <i class="fas fa-user input-icon"></i>
-                        <input type="text" id="signupDisplayName" class="form-control" placeholder="Display Name" required>
-                    </div>
-                </div>
-                <div class="form-floating-group">
-                    <div class="input-icon-wrap">
-                        <i class="fas fa-lock input-icon"></i>
-                        <input type="password" id="signupPassword" class="form-control" placeholder="Password (min 6 characters)" required minlength="6">
-                    </div>
-                </div>
-                <div class="form-floating-group">
-                    <div class="input-icon-wrap">
-                        <i class="fas fa-lock input-icon"></i>
-                        <input type="password" id="signupPasswordConfirm" class="form-control" placeholder="Confirm Password" required minlength="6">
-                    </div>
-                </div>
-                <div class="form-message" id="signupMessage2" style="display:none;"></div>
-                <button type="submit" class="btn btn-primary-purple w-100" id="signupBtn2">Create Account</button>
-            </form>
-        </div>
-
-        <div class="auth-links">
-            Already a member? <a href="/views/auth/login.cfm"><strong>Log in</strong></a>
-        </div>
     </div>
-</div>
+</div> --->
 
 <script>
 var signupData = {};

@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Polyculy - <cfoutput>#attributes.pageTitle ?: "Calendar that keeps up"#</cfoutput></title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
 
     <!-- Bootstrap 5.3 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -34,24 +35,13 @@
     <script src="/assets/js/polyculy.js"></script>
 </head>
 <body>
-    <cfoutput>
+   
     <!-- Top Navbar -->
-    <cfif isDefined("session.userID") AND val(session.userID) GT 0>
+    <cfif isDefined("session.userID") AND val(session.userID) GT 0> <cfoutput>
 	   	<nav class="navbar-polyculy">
 	        <div class="navbar-brand-area">
 	            <a href="/views/calendar/month.cfm" class="navbar-brand-link">
-	                <svg class="logo-icon" width="36" height="36" viewBox="0 0 40 40" fill="none">
-	                    <path d="M12 8C7 8 3 12 3 17C3 27 20 36 20 36C20 36 37 27 37 17C37 12 33 8 28 8C24.5 8 21.5 10 20 13C18.5 10 15.5 8 12 8Z" fill="url(##heartGrad1)" opacity="0.7"/>
-	                    <path d="M15 6C10 6 6 10 6 15C6 25 23 34 23 34C23 34 40 25 40 15C40 10 36 6 31 6C27.5 6 24.5 8 23 11C21.5 8 18.5 6 15 6Z" fill="url(##heartGrad2)" opacity="0.8"/>
-	                    <defs>
-	                        <linearGradient id="heartGrad1" x1="3" y1="8" x2="37" y2="36" gradientUnits="userSpaceOnUse">
-	                            <stop stop-color="##EC4899"/><stop offset="1" stop-color="##8B5CF6"/>
-	                        </linearGradient>
-	                        <linearGradient id="heartGrad2" x1="6" y1="6" x2="40" y2="34" gradientUnits="userSpaceOnUse">
-	                            <stop stop-color="##A855F7"/><stop offset="1" stop-color="##7C3AED"/>
-	                        </linearGradient>
-	                    </defs>
-	                </svg>
+					<img src="/images/polyculy_logo_xs.png" width="40" height="32" title="Polyculy"/>
 	                <span class="brand-text">Polyculy</span>
 	            </a>
 	        </div>
@@ -84,20 +74,23 @@
 	                </a>
 	            </cfif>
 	        </div>
-	    </nav>  	
-    </cfif>	
- 
-    </cfoutput>
-
-    <!-- Notification Overlay (click outside to close) -->
+	    </nav>  </cfoutput>
+	    
+	        <!-- Notification Overlay (click outside to close) -->
     <div class="notif-overlay" id="notifOverlay" style="display:none;" onclick="Polyculy.toggleNotifications()"></div>
 
-    <!-- Main Content -->
-    <div class="main-content">
+    
+	     	
+    </cfif>	
+ 
+   
+
+<!-- Main Content -->
+  <!---   <div class="main-content">--->
 
 <cfelseif thistag.executionMode eq "end">
 
-    </div>
+  <!---   </div>--->
 
     <footer class="app-footer">
 <!---         <a href="https://www.perplexity.ai/computer" target="_blank" rel="noopener noreferrer">
@@ -105,6 +98,15 @@
         </a>&middot; --->
          Polyculy &copy; <cfoutput>#year(now())#</cfoutput>
     </footer>
+
+    <cfif isDefined("session.userID") AND val(session.userID) GT 0>
+// Init on page load
+$(document).ready(function() {
+   Polyculy.loadNotificationCount();
+    // Refresh notification count every 30 seconds
+   setInterval(Polyculy.loadNotificationCount, 30000);
+});
+    </cfif>
 
 </body>
 </html>

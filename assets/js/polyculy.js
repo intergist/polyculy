@@ -88,15 +88,15 @@ var Polyculy = (function() {
 
     function markNotificationRead(notifId) {
         apiPost('/api/notifications.cfm?action=markRead', { notificationId: notifId }).done(function() {
-            loadNotificationCount();
-            loadNotifications();
+        loadNotificationCount();
+        loadNotifications();
         });
     }
 
     function markAllNotificationsRead() {
         apiPost('/api/notifications.cfm?action=markAllRead', {}).done(function() {
-            loadNotificationCount();
-            loadNotifications();
+        loadNotificationCount();
+        loadNotifications();
         });
     }
 
@@ -723,9 +723,4 @@ var Polyculy = (function() {
 
 })();
 
-// Init on page load
-$(document).ready(function() {
-    Polyculy.loadNotificationCount();
-    // Refresh notification count every 30 seconds
-    setInterval(Polyculy.loadNotificationCount, 30000);
-});
+
